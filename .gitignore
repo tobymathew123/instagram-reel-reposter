@@ -1,0 +1,11 @@
+# Secrets - never commit
+.env
+
+# Your own brand frame (keep it out of public repos if you like)
+branding/frame.png
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+node_modules/

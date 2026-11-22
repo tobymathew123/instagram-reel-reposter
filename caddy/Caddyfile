@@ -1,0 +1,30 @@
+# The "doorman". The tunnel sends all internet traffic here.
+# Only three things are allowed through; the n8n editor stays private on your computer.
+{
+	admin off
+	auto_https off
+}
+
+:80 {
+	# Finished branded videos (Instagram downloads them from here)
+	handle /files/* {
+		reverse_proxy ffmpeg-api:8080
+	}
+
+	# Meta webhook (live) and n8n "test" webhooks
+	handle /webhook/* {
+		reverse_proxy n8n:5678
+	}
+	handle /webhook-test/* {
+		reverse_proxy n8n:5678
+	}
+
+	# Simple check that the tunnel works: open https://YOUR-DOMAIN/healthz
+	handle /healthz {
+		respond "ok - your Reel reposter is reachable" 200
+	}
+
+	handle {
+		respond "Not found" 404
+	}
+}

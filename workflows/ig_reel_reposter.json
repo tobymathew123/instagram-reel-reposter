@@ -1,0 +1,1266 @@
+{
+  "id": "IgReelRepost2026",
+  "name": "Instagram Reel Auto-Reposter",
+  "nodes": [
+    {
+      "parameters": {
+        "width": 620,
+        "height": 300,
+        "content": "## Instagram Reel Auto-Reposter\n**How it works:** you share a Reel by DM from your personal account (A) to your channel (B). This workflow checks it came from you, adds your Canva frame, writes an AI caption, and posts it on B.\n\n**Settings live in the `.env` file** on your computer (read by the **Config** node). Change `.env`, then run the setup script again.\n\n**Test mode:** `DRY_RUN=true` in `.env` = nothing is posted.\n\nSee README.md for full instructions."
+      },
+      "id": "bcb39cad-f6df-4ec5-a4de-17c8c5a09375",
+      "name": "Note: Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -440,
+        -380
+      ]
+    },
+    {
+      "parameters": {
+        "width": 620,
+        "height": 340,
+        "color": 5,
+        "content": "### Part 1 - Meta handshake\nMeta calls this once (GET) when you click **Verify and save** in the Meta app webhook settings."
+      },
+      "id": "309880c6-d487-40a7-a1be-516ee701e2b0",
+      "name": "Note: Verification",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -440,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "width": 900,
+        "height": 360,
+        "color": 4,
+        "content": "### Part 3 - Publish\nInstagram needs time to process the video. We check its status every 15 seconds (up to 10 minutes) and publish as soon as it is ready."
+      },
+      "id": "9cb5ce93-b19c-4c40-af3e-bccee5a819aa",
+      "name": "Note: Publish loop",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "ig-dm",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ca532c02-a73e-46f4-a2ac-c29e6d22b505",
+      "name": "Meta Verify (GET)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        60
+      ],
+      "webhookId": "0ba2becc-f112-4aac-a82b-60acf5a1ddaf"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "5a6df720-540c-40d9-ad53-0d3fd6885511",
+              "leftValue": "={{ $json.query['hub.mode'] }}",
+              "rightValue": "subscribe",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "a1047eab-1035-4586-a2a5-3557e0b2a75e",
+              "leftValue": "={{ $json.query['hub.verify_token'] }}",
+              "rightValue": "={{ $env.META_VERIFY_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c5e31d59-1566-4de4-a93e-3f1489b00ebc",
+              "leftValue": "={{ $env.META_VERIFY_TOKEN }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2233b034-370f-4e23-a220-0cbf4d22f4f7",
+      "name": "Is Valid Verification?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query['hub.challenge'] }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "aae5a5e5-93bc-4702-abab-56ed859c86cb",
+      "name": "Return Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        40,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Verification failed: verify token does not match",
+        "options": {
+          "responseCode": 403
+        }
+      },
+      "id": "5379ac11-7f33-4742-aeba-865184084eec",
+      "name": "Reject Verification",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        40,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ig-dm",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "9a313067-14c9-482a-add8-a52fa56b3e27",
+      "name": "Instagram DM (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        440
+      ],
+      "webhookId": "d38de710-4c0f-4e71-aada-d8fa2ef38d3d"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c66058c7-6ba5-4834-ac98-4ebd1f12e909",
+              "name": "META_PAGE_ACCESS_TOKEN",
+              "value": "={{ $env.META_PAGE_ACCESS_TOKEN }}",
+              "type": "string"
+            },
+            {
+              "id": "1a399ec3-8f0f-43c9-a880-678abe0d6d8a",
+              "name": "IG_BUSINESS_ACCOUNT_ID",
+              "value": "={{ $env.IG_BUSINESS_ACCOUNT_ID }}",
+              "type": "string"
+            },
+            {
+              "id": "80509094-c81d-4df7-a679-1b0c2495b155",
+              "name": "ALLOWED_SENDER_IG_ID",
+              "value": "={{ ($env.ALLOWED_SENDER_IG_ID || \"\").trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "2bad7db3-35a6-4a8d-a9a5-5a457f8c1d6f",
+              "name": "GRAPH_API_VERSION",
+              "value": "={{ $env.GRAPH_API_VERSION || \"v22.0\" }}",
+              "type": "string"
+            },
+            {
+              "id": "4d7e351d-01b4-402b-a96a-72abaf28c417",
+              "name": "CANVA_FRAME_PNG_URL",
+              "value": "={{ $env.CANVA_FRAME_PNG_URL || \"local\" }}",
+              "type": "string"
+            },
+            {
+              "id": "2887e1fb-ad97-46b1-aa18-0d69cb35f8f1",
+              "name": "FFMPEG_API_URL",
+              "value": "={{ $env.FFMPEG_API_URL || \"http://ffmpeg-api:8080\" }}",
+              "type": "string"
+            },
+            {
+              "id": "540a35e8-1cf7-4906-a14b-7c8eae5ba9d2",
+              "name": "FFMPEG_API_KEY",
+              "value": "={{ $env.FFMPEG_API_KEY || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "e583e72b-c919-45ac-add7-bceb4a736b5b",
+              "name": "GEMINI_API_KEY",
+              "value": "={{ $env.GEMINI_API_KEY || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "84d5556a-cc42-4f73-a728-3327c8e2c280",
+              "name": "GEMINI_MODEL",
+              "value": "={{ $env.GEMINI_MODEL || \"gemini-2.5-flash\" }}",
+              "type": "string"
+            },
+            {
+              "id": "61175ad9-baa3-4c92-a8fd-edc2cb3818a3",
+              "name": "CHANNEL_NICHE",
+              "value": "={{ $env.CHANNEL_NICHE || \"viral, entertaining short videos\" }}",
+              "type": "string"
+            },
+            {
+              "id": "d652bee6-af22-4c65-adb1-66b92adf5c71",
+              "name": "CAPTION_FOOTER",
+              "value": "={{ $env.CAPTION_FOOTER || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "26927bb6-497f-4988-a11d-3bcb748d7bae",
+              "name": "FALLBACK_HASHTAGS",
+              "value": "={{ $env.FALLBACK_HASHTAGS || \"#reels #viral #explore #trending #fyp\" }}",
+              "type": "string"
+            },
+            {
+              "id": "86f8671e-3424-4076-a42d-5293dcf68e2a",
+              "name": "SEND_DM_CONFIRMATIONS",
+              "value": "={{ String($env.SEND_DM_CONFIRMATIONS || \"true\").toLowerCase() === \"true\" }}",
+              "type": "boolean"
+            },
+            {
+              "id": "e7a34f4d-732d-417b-a47e-91b4b4543d09",
+              "name": "DRY_RUN",
+              "value": "={{ String($env.DRY_RUN || \"false\").toLowerCase() === \"true\" }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "8851142d-a56f-4885-ae66-8a165b33fee7",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -180,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Turns Meta's webhook payload into one simple item per DM.\n// Look at this node's OUTPUT to find your ALLOWED_SENDER_IG_ID (the \"senderId\" field).\nconst cfg = $('Config').first().json;\nconst body = $('Instagram DM (POST)').first().json.body || {};\nconst VIDEO_TYPES = ['ig_reel', 'ig_post', 'video', 'reel'];\n\n// Remember processed message IDs so Meta retries never cause double posts\nconst memory = $getWorkflowStaticData('global');\nmemory.seen = memory.seen || [];\n\nconst out = [];\nfor (const entry of body.entry || []) {\n  for (const ev of entry.messaging || []) {\n    const msg = ev.message || {};\n    const atts = msg.attachments || [];\n    const att = atts.find(a => VIDEO_TYPES.includes(a.type)) || atts[0] || {};\n    const p = att.payload || {};\n    const mid = msg.mid || '';\n    const duplicate = !!mid && memory.seen.includes(mid);\n    out.push({ json: {\n      senderId: String((ev.sender && ev.sender.id) || ''),\n      allowedSenderId: cfg.ALLOWED_SENDER_IG_ID,\n      senderIsAllowed: !!cfg.ALLOWED_SENDER_IG_ID && String((ev.sender && ev.sender.id) || '') === cfg.ALLOWED_SENDER_IG_ID,\n      attachmentType: att.type || 'none',\n      mediaUrl: p.url || '',\n      reelTitle: p.title || '',\n      reelVideoId: p.reel_video_id || '',\n      text: msg.text || '',\n      messageId: mid,\n      isEcho: !!msg.is_echo,\n      duplicate,\n      receivedAt: new Date(ev.timestamp || Date.now()).toISOString(),\n    }});\n  }\n}\n\n// Only mark as \"seen\" the messages we will actually process\nfor (const item of out) {\n  const j = item.json;\n  if (j.senderIsAllowed && j.mediaUrl && !j.isEcho && !j.duplicate && j.messageId) memory.seen.push(j.messageId);\n}\nmemory.seen = memory.seen.slice(-300);\n\nif (!out.length) out.push({ json: { senderId: '', attachmentType: 'none', mediaUrl: '', note: 'Not a DM event (read receipt, reaction, etc.) - ignored.' } });\nreturn out;"
+      },
+      "id": "42c571b2-7720-41b7-a49e-8d31adb130e4",
+      "name": "Parse DM Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c09bb890-b096-4730-af68-8cc6d1dad34e",
+              "leftValue": "={{ $json.senderId }}",
+              "rightValue": "={{ $('Config').first().json.ALLOWED_SENDER_IG_ID || '__not_set__' }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "cf1126f6-7238-4f3e-a5fc-c8c8737b72e8",
+              "leftValue": "={{ ['ig_reel', 'ig_post', 'video', 'reel'].includes($json.attachmentType) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "619aae02-9dda-4282-a3a6-af0ba619b45b",
+              "leftValue": "={{ $json.mediaUrl }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "adfec577-2ae8-432a-a108-96037b0779be",
+              "leftValue": "={{ !$json.isEcho && !$json.duplicate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5aae4cc6-4df2-41a7-af9d-8d098bbf8cba",
+      "name": "Allowed Sender & Reel?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        260,
+        440
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e31f2df2-6ba0-4f54-a521-89b6cec52316",
+      "name": "Ignore (not from you / not a Reel)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        480,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Builds the AI prompt and a unique job id for this Reel.\nconst cfg = $('Config').first().json;\nconst job = $json;\nconst jobId = 'reel_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);\nconst context = (job.reelTitle || job.text || '').slice(0, 1500);\n\nconst prompt = [\n  'You are the social media copywriter for an Instagram channel.',\n  'Channel niche: ' + cfg.CHANNEL_NICHE,\n  '',\n  'We are reposting a Reel. Its original description (may be empty, messy, or in another language) is:',\n  '\"\"\"' + (context || '(no description available)') + '\"\"\"',\n  '',\n  'Write a brand-new English caption following these rules exactly:',\n  '- Line 1: a punchy, scroll-stopping hook (max 12 words).',\n  '- Line 2: one short, engaging follow-up sentence or call to action.',\n  '- Then one empty line.',\n  '- Then exactly 5 relevant, niche-specific hashtags on one line, separated by single spaces.',\n  \"- If the original description mentions the creator's @username, add a final line: Credit: @username\",\n  '- Plain text only. No markdown, no asterisks, no quotation marks, no labels like \"Hook:\", max 2 emojis.',\n  '- Output only the caption, nothing else.',\n].join('\\n');\n\nreturn { json: {\n  ...job,\n  jobId,\n  geminiRequest: {\n    contents: [{ role: 'user', parts: [{ text: prompt }] }],\n    generationConfig: { temperature: 0.9, maxOutputTokens: 400, thinkingConfig: { thinkingBudget: 0 } },\n  },\n}};"
+      },
+      "id": "383c3f4f-11f4-4bbb-af10-3957534fb8a1",
+      "name": "Prepare Job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{ $('Config').first().json.GEMINI_MODEL }}:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{ $('Config').first().json.GEMINI_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.geminiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "f87a5010-4919-41b3-a9c6-00042e40c788",
+      "name": "Generate Caption (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Cleans the AI caption. If the AI failed, builds a simple fallback caption so posting still works.\nconst cfg = $('Config').first().json;\nconst job = $('Prepare Job').item.json;\n\nlet text = '';\nconst parts = ($json.candidates && $json.candidates[0] && $json.candidates[0].content && $json.candidates[0].content.parts) || [];\ntext = parts.map(p => p.text || '').join('').trim();\n\n// strip markdown the model might add (but keep #hashtags)\ntext = text\n  .replace(/\\*\\*|__|`/g, '')\n  .replace(/^#{1,6}\\s+/gm, '')\n  .replace(/^(hook|caption|line \\d)\\s*:\\s*/gim, '')\n  .replace(/^[\"'\\u201c\\u201d]+|[\"'\\u201c\\u201d]+$/g, '')\n  .split('\\n').map(l => l.trim()).join('\\n')\n  .replace(/\\n{3,}/g, '\\n\\n')\n  .trim();\n\nconst aiGenerated = text.length > 0;\nif (!aiGenerated) {\n  const firstLine = (job.reelTitle || '').split('\\n')[0].replace(/#[^\\s#]+/g, '').trim().slice(0, 150);\n  text = (firstLine || 'You need to see this \\u{1F440}') + '\\n\\n' + cfg.FALLBACK_HASHTAGS;\n}\nif (cfg.CAPTION_FOOTER) text += '\\n\\n' + cfg.CAPTION_FOOTER;\n\n// Instagram limits: max 30 hashtags, max 2200 characters\nlet tagCount = 0;\ntext = text.replace(/#[^\\s#]+/g, t => (++tagCount <= 30 ? t : '')).replace(/[ \\t]+\\n/g, '\\n');\ntext = text.slice(0, 2200).trim();\n\nreturn { json: {\n  caption: text,\n  aiGenerated,\n  aiError: aiGenerated ? null : ($json.error ? (typeof $json.error === 'string' ? $json.error : ($json.error.message || JSON.stringify($json.error))) : 'Empty AI response'),\n}};"
+      },
+      "id": "7736c612-d057-43fe-aff0-28f30442325a",
+      "name": "Build Caption",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.FFMPEG_API_URL }}/render",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $('Config').first().json.FFMPEG_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: $('Prepare Job').item.json.mediaUrl, frame: $('Config').first().json.CANVA_FRAME_PNG_URL, jobId: $('Prepare Job').item.json.jobId }) }}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "id": "1ece913f-86fd-4d4c-a054-4bbbacd382cd",
+      "name": "Render Branded Video (FFmpeg)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1140,
+        340
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "ee17560c-8b77-485b-abb8-d8687820f9b8",
+              "leftValue": "={{ $('Config').first().json.DRY_RUN }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bb1337cd-a79c-4a85-a2e8-f803943f95a4",
+      "name": "Dry Run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "68f6ec1f-5107-49cd-ae9b-d9654992d2a0",
+              "name": "result",
+              "value": "DRY RUN - nothing was posted. Set DRY_RUN=false in .env to go live.",
+              "type": "string"
+            },
+            {
+              "id": "db70556d-9d6a-4d79-ac99-668e4f08a430",
+              "name": "previewOnThisComputer",
+              "value": "=http://localhost:8080/files/{{ $json.filename }}",
+              "type": "string"
+            },
+            {
+              "id": "3a626ee0-3af2-4db1-a802-1261a317df2e",
+              "name": "publicVideoUrl",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "ca8f12d6-ff33-4113-a78e-71131b19f642",
+              "name": "caption",
+              "value": "={{ $('Build Caption').item.json.caption }}",
+              "type": "string"
+            },
+            {
+              "id": "a9a32c45-fb0e-4305-a146-a65d233b20cf",
+              "name": "aiGenerated",
+              "value": "={{ $('Build Caption').item.json.aiGenerated }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "dffafdf6-2037-42fc-aa42-9ac46a3cb885",
+      "name": "Dry Run Complete",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1580,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('Config').first().json.GRAPH_API_VERSION }}/{{ $('Config').first().json.IG_BUSINESS_ACCOUNT_ID }}/media",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "media_type",
+              "value": "REELS"
+            },
+            {
+              "name": "video_url",
+              "value": "={{ $('Render Branded Video (FFmpeg)').item.json.url }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $('Build Caption').item.json.caption }}"
+            },
+            {
+              "name": "share_to_feed",
+              "value": "true"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Config').first().json.META_PAGE_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "e3ba425c-d146-4c98-a770-3673603620d8",
+      "name": "Create Media Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1580,
+        400
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "amount": 15,
+        "unit": "seconds"
+      },
+      "id": "22527ce3-6665-44a3-af37-a584f1f184cc",
+      "name": "Wait 15s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1800,
+        400
+      ],
+      "webhookId": "c80e3068-d428-4232-a606-7c313fe0a814"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/{{ $('Config').first().json.GRAPH_API_VERSION }}/{{ $('Create Media Container').item.json.id }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "status_code,status"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Config').first().json.META_PAGE_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "47667173-561d-4d96-acd7-9921319d168d",
+      "name": "Check Container Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2020,
+        400
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "5573e39b-6600-496d-a0f4-93d00ec76584",
+              "leftValue": "={{ $json.status_code }}",
+              "rightValue": "FINISHED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c6138946-3170-4002-a635-a7d83280e253",
+      "name": "Ready to Publish?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "e5353879-bd69-4fdd-ab46-5dad176ff52d",
+              "leftValue": "={{ ['ERROR', 'EXPIRED'].includes($json.status_code) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "2a5bd027-10e9-45a7-abb9-2da876655950",
+              "leftValue": "={{ $runIndex }}",
+              "rightValue": 40,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "8898568e-c187-4e58-adab-690b2c171680",
+      "name": "Failed or Timed Out?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('Config').first().json.GRAPH_API_VERSION }}/{{ $('Config').first().json.IG_BUSINESS_ACCOUNT_ID }}/media_publish",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $('Create Media Container').item.json.id }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Config').first().json.META_PAGE_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "986ad85c-f1b0-461a-a59c-ddf2ba6d5db2",
+      "name": "Publish Reel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2460,
+        300
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/{{ $('Config').first().json.GRAPH_API_VERSION }}/{{ $json.id }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "permalink"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Config').first().json.META_PAGE_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "8caa48a6-0c10-4cb9-ae00-016a905ae248",
+      "name": "Get Permalink",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2680,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "640d87e7-41e6-4a4c-a69a-82a4cd304787",
+              "leftValue": "={{ $('Config').first().json.SEND_DM_CONFIRMATIONS }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8e3d962b-fd2c-4f3f-a9b4-1825d0117c9e",
+      "name": "Send Success DM?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('Config').first().json.GRAPH_API_VERSION }}/me/messages",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "={{ $('Config').first().json.META_PAGE_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ recipient: { id: $('Prepare Job').item.json.senderId }, message: { text: '\\u2705 Reposted to your channel!' + ($json.permalink ? '\\n' + $json.permalink : '') } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "f84e1c1b-164a-4e8b-af67-494a47529c78",
+      "name": "DM: Posted",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3120,
+        220
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a0ff3402-e8ed-49d9-ab03-84813bc98f03",
+              "name": "failedStep",
+              "value": "={{ $prevNode.name }}",
+              "type": "string"
+            },
+            {
+              "id": "ae43ca89-0dfa-4a4c-a03a-b9d99b2ce74c",
+              "name": "reason",
+              "value": "={{ $json.error ? (typeof $json.error === 'string' ? $json.error : ($json.error.message || JSON.stringify($json.error))) : ($json.status_code ? ('Instagram status ' + $json.status_code + ': ' + ($json.status || '')) : 'Instagram took longer than 10 minutes to process the video') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "04e81646-dfce-4a70-a19b-f9cbf5bed92b",
+      "name": "Describe Failure",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2460,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "46188819-2466-4b39-ae9a-8dd710d71d20",
+              "leftValue": "={{ $('Config').first().json.SEND_DM_CONFIRMATIONS }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1c6739cb-8001-4e7e-ae40-9a515c0fc900",
+      "name": "Send Failure DM?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2680,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('Config').first().json.GRAPH_API_VERSION }}/me/messages",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "={{ $('Config').first().json.META_PAGE_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ recipient: { id: $('Prepare Job').item.json.senderId }, message: { text: ('\\u274C Could not repost that Reel.\\nStep: ' + $json.failedStep + '\\nReason: ' + $json.reason).slice(0, 900) } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "cd776f58-e502-497c-a190-c5baeed826d3",
+      "name": "DM: Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2900,
+        680
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "errorMessage": "=Repost failed at \"{{ $('Describe Failure').item.json.failedStep }}\": {{ $('Describe Failure').item.json.reason }}"
+      },
+      "id": "45d9a5f7-6d2c-4754-ab75-5284d986c911",
+      "name": "Stop: Repost Failed",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        3120,
+        760
+      ]
+    }
+  ],
+  "connections": {
+    "Meta Verify (GET)": {
+      "main": [
+        [
+          {
+            "node": "Is Valid Verification?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Valid Verification?": {
+      "main": [
+        [
+          {
+            "node": "Return Challenge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Verification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram DM (POST)": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Parse DM Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse DM Event": {
+      "main": [
+        [
+          {
+            "node": "Allowed Sender & Reel?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Allowed Sender & Reel?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignore (not from you / not a Reel)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Job": {
+      "main": [
+        [
+          {
+            "node": "Generate Caption (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Caption (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Build Caption",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Caption": {
+      "main": [
+        [
+          {
+            "node": "Render Branded Video (FFmpeg)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Branded Video (FFmpeg)": {
+      "main": [
+        [
+          {
+            "node": "Dry Run?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Describe Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dry Run?": {
+      "main": [
+        [
+          {
+            "node": "Dry Run Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Media Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Media Container": {
+      "main": [
+        [
+          {
+            "node": "Wait 15s",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Describe Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 15s": {
+      "main": [
+        [
+          {
+            "node": "Check Container Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Container Status": {
+      "main": [
+        [
+          {
+            "node": "Ready to Publish?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Describe Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ready to Publish?": {
+      "main": [
+        [
+          {
+            "node": "Publish Reel",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed or Timed Out?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Failed or Timed Out?": {
+      "main": [
+        [
+          {
+            "node": "Describe Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 15s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish Reel": {
+      "main": [
+        [
+          {
+            "node": "Get Permalink",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Describe Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Permalink": {
+      "main": [
+        [
+          {
+            "node": "Send Success DM?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Success DM?": {
+      "main": [
+        [
+          {
+            "node": "DM: Posted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Describe Failure": {
+      "main": [
+        [
+          {
+            "node": "Send Failure DM?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Failure DM?": {
+      "main": [
+        [
+          {
+            "node": "DM: Failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop: Repost Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DM: Failed": {
+      "main": [
+        [
+          {
+            "node": "Stop: Repost Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
